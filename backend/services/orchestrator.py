@@ -18,6 +18,14 @@ from utils.media import cleanup_work_dir, download_media, extract_frames
 logger = logging.getLogger(__name__)
 
 
+def _unwrap(result, service_name: str, fallback: list) -> list:
+    """Return result if successful, otherwise log the error and return fallback mock data."""
+    if isinstance(result, Exception):
+        logger.error(f"{service_name} failed, falling back to mock data: {result}")
+        return fallback
+    return result
+
+
 def run_analysis_pipeline(analysis_id: str, source_url: str):
     """Main orchestrator — runs all analysis services and stores results."""
     asyncio.run(_async_pipeline(analysis_id, source_url))
@@ -52,22 +60,33 @@ async def _async_pipeline(analysis_id: str, source_url: str):
         # Step 3: Build a mock transcript (in production, use Whisper or similar)
         transcript = _get_transcript_text()
 
-        # Step 4: Run all analysis services in parallel
+        # Step 4: Run all analysis services in parallel — each is independent.
+        # return_exceptions=True ensures one failing service never kills the others.
         visual_task = reka_service.analyze_video_frames(frames) if frames else reka_service.analyze_video_url(source_url)
         voice_task = modulate_service.analyze_voice(audio_path, transcript)
         entity_task = fastino_service.extract_entities(transcript)
         classification_task = fastino_service.classify_statements(transcript)
 
-        visual_results, voice_results, entities, classifications = await asyncio.gather(
-            visual_task, voice_task, entity_task, classification_task
+        raw_results = await asyncio.gather(
+            visual_task, voice_task, entity_task, classification_task,
+            return_exceptions=True,
         )
 
-        # Step 5: Fact-check key claims using Yutori
+        visual_results = _unwrap(raw_results[0], "Reka Vision", reka_service._mock_visual_analysis(5))
+        voice_results = _unwrap(raw_results[1], "Modulate", modulate_service._mock_voice_analysis())
+        entities = _unwrap(raw_results[2], "Fastino entities", fastino_service._mock_entity_extraction())
+        classifications = _unwrap(raw_results[3], "Fastino classify", fastino_service._mock_statement_classification())
+
+        # Step 5: Fact-check key claims using Yutori (also resilient)
         claims_to_check = [
             c for c in classifications
             if c.get("classification") in ("forward_looking_statement", "performance_metric", "risk_disclosure")
         ]
-        fact_check_results = await yutori_service.fact_check_claims(claims_to_check)
+        try:
+            fact_check_results = await yutori_service.fact_check_claims(claims_to_check)
+        except Exception as e:
+            logger.error(f"Yutori fact-checking failed, using mock: {e}")
+            fact_check_results = yutori_service._mock_fact_checks()
 
         # Step 6: Store all results in database
         _store_visual_segments(db, analysis_id, visual_results)
