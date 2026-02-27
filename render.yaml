@@ -36,7 +36,7 @@ services:
         fromService:
           type: web
           name: echomind-api
-          property: url
+          property: host
     headers:
       - path: /*
         name: X-Frame-Options
@@ -60,7 +60,7 @@ services:
         fromService:
           type: web
           name: echomind-api
-          property: url
+          property: host
 
 databases:
   - name: echomind-db
