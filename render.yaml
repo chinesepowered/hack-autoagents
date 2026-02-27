@@ -1,0 +1,69 @@
+# EchoMind — Render Infrastructure as Code
+# Deploys 4 services: Web Service, Static Site, PostgreSQL, Cron Job
+
+services:
+  # Backend API — FastAPI
+  - type: web
+    name: echomind-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: echomind-db
+          property: connectionString
+      - key: REKA_API_KEY
+        sync: false
+      - key: MODULATE_API_KEY
+        sync: false
+      - key: FASTINO_API_KEY
+        sync: false
+      - key: YUTORI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: static
+          name: echomind-frontend
+          property: url
+    healthCheckPath: /health
+
+staticSites:
+  # Frontend Dashboard — React + Vite
+  - name: echomind-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: echomind-api
+          property: url
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+cronJobs:
+  # Cron Job — Earnings call monitor
+  - name: echomind-monitor
+    runtime: docker
+    dockerfilePath: ./cron/Dockerfile
+    dockerContext: ./cron
+    schedule: "0 */6 * * *"
+    envVars:
+      - key: YUTORI_API_KEY
+        sync: false
+      - key: ECHOMIND_API_URL
+        fromService:
+          type: web
+          name: echomind-api
+          property: url
+
+databases:
+  - name: echomind-db
+    plan: free
