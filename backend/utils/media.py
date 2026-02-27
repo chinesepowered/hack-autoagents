@@ -1,16 +1,16 @@
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 
 logger = logging.getLogger(__name__)
 
-TEMP_DIR = tempfile.mkdtemp(prefix="echomind_")
-
 
 def download_media(url: str) -> dict:
     """Download video/audio from URL using yt-dlp. Returns paths to files."""
-    output_template = os.path.join(TEMP_DIR, "%(id)s.%(ext)s")
+    work_dir = tempfile.mkdtemp(prefix="echomind_")
+    output_template = os.path.join(work_dir, "%(id)s.%(ext)s")
 
     try:
         # Download video
@@ -30,16 +30,18 @@ def download_media(url: str) -> dict:
 
         if result.returncode != 0:
             logger.error(f"yt-dlp failed: {result.stderr}")
+            shutil.rmtree(work_dir, ignore_errors=True)
             return {"error": result.stderr}
 
         # Find the downloaded file
         video_file = None
-        for f in os.listdir(TEMP_DIR):
+        for f in os.listdir(work_dir):
             if f.endswith((".mp4", ".webm", ".mkv")):
-                video_file = os.path.join(TEMP_DIR, f)
+                video_file = os.path.join(work_dir, f)
                 break
 
         if not video_file:
+            shutil.rmtree(work_dir, ignore_errors=True)
             return {"error": "No video file found after download"}
 
         # Extract audio
@@ -58,17 +60,20 @@ def download_media(url: str) -> dict:
         return {
             "video_path": video_file,
             "audio_path": audio_file if os.path.exists(audio_file) else None,
+            "work_dir": work_dir,
         }
 
     except subprocess.TimeoutExpired:
+        shutil.rmtree(work_dir, ignore_errors=True)
         return {"error": "Download timed out"}
     except Exception as e:
+        shutil.rmtree(work_dir, ignore_errors=True)
         return {"error": str(e)}
 
 
 def extract_frames(video_path: str, interval_seconds: int = 30) -> list[str]:
     """Extract frames from video at regular intervals."""
-    frames_dir = os.path.join(TEMP_DIR, "frames")
+    frames_dir = os.path.join(os.path.dirname(video_path), "frames")
     os.makedirs(frames_dir, exist_ok=True)
 
     try:
@@ -93,3 +98,9 @@ def extract_frames(video_path: str, interval_seconds: int = 30) -> list[str]:
     except Exception as e:
         logger.error(f"Frame extraction failed: {e}")
         return []
+
+
+def cleanup_work_dir(work_dir: str):
+    """Clean up temporary files after processing."""
+    if work_dir and os.path.isdir(work_dir):
+        shutil.rmtree(work_dir, ignore_errors=True)

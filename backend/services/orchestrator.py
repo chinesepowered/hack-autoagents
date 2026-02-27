@@ -13,7 +13,7 @@ from models.database import (
     VoiceSegment,
 )
 from services import fastino_service, modulate_service, reka_service, yutori_service
-from utils.media import download_media, extract_frames
+from utils.media import cleanup_work_dir, download_media, extract_frames
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ def run_analysis_pipeline(analysis_id: str, source_url: str):
 
 async def _async_pipeline(analysis_id: str, source_url: str):
     db = SessionLocal()
+    work_dir = None
     try:
         analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
         if not analysis:
@@ -35,6 +36,11 @@ async def _async_pipeline(analysis_id: str, source_url: str):
 
         # Step 1: Download media
         media = download_media(source_url)
+        work_dir = media.get("work_dir")
+
+        if media.get("error"):
+            logger.warning(f"Media download failed: {media['error']}. Proceeding with mock data.")
+
         video_path = media.get("video_path")
         audio_path = media.get("audio_path")
 
@@ -80,12 +86,17 @@ async def _async_pipeline(analysis_id: str, source_url: str):
 
     except Exception as e:
         logger.error(f"Analysis pipeline failed for {analysis_id}: {e}")
-        analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
-        if analysis:
-            analysis.status = "failed"
-            analysis.summary = f"Analysis failed: {str(e)}"
-            db.commit()
+        try:
+            analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+            if analysis:
+                analysis.status = "failed"
+                analysis.summary = f"Analysis failed: {str(e)}"
+                db.commit()
+        except Exception as db_err:
+            logger.error(f"Failed to update analysis status: {db_err}")
     finally:
+        if work_dir:
+            cleanup_work_dir(work_dir)
         db.close()
 
 

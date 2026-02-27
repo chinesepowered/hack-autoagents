@@ -1,5 +1,4 @@
 import logging
-import random
 from typing import Optional
 
 import httpx
@@ -19,12 +18,14 @@ async def analyze_voice(audio_path: Optional[str] = None, transcript: Optional[s
         logger.warning("MODULATE_API_KEY not set, using mock data")
         return _mock_voice_analysis()
 
+    audio_file = None
     try:
         async with httpx.AsyncClient(timeout=120) as client:
             # Submit audio for analysis
             files = {}
             if audio_path:
-                files["audio"] = open(audio_path, "rb")
+                audio_file = open(audio_path, "rb")
+                files["audio"] = audio_file
 
             response = await client.post(
                 "https://api.modulate.ai/v1/analyze",
@@ -51,6 +52,9 @@ async def analyze_voice(audio_path: Optional[str] = None, transcript: Optional[s
     except Exception as e:
         logger.error(f"Modulate analysis failed: {e}")
         return _mock_voice_analysis()
+    finally:
+        if audio_file:
+            audio_file.close()
 
 
 def _mock_voice_analysis() -> list[dict]:
