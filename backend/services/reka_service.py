@@ -31,7 +31,7 @@ async def analyze_video_frames(frames: list[str]) -> list[dict]:
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "reka-vision",
+                        "model": "reka-flash",
                         "messages": [
                             {
                                 "role": "user",
@@ -101,7 +101,7 @@ async def analyze_video_url(video_url: str) -> list[dict]:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "reka-vision",
+                    "model": "reka-flash",
                     "messages": [
                         {
                             "role": "user",
