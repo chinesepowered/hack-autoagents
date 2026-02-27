@@ -50,15 +50,32 @@ async def _call_pioneer_api(
             data = response.json()
 
             entities = []
-            for entity in data.get("result", []):
-                entities.append(
-                    {
-                        "name": entity.get("text", ""),
-                        "entity_type": entity.get("label", ""),
-                        "context": "",
-                        "confidence": entity.get("score", 0.0),
-                    }
-                )
+            result = data.get("result", {})
+            entity_dict = result.get("entities", {})
+
+            for entity_type, entity_list in entity_dict.items():
+                for entity in entity_list:
+                    if isinstance(entity, dict):
+                        entities.append(
+                            {
+                                "name": entity.get("text", ""),
+                                "entity_type": entity_type,
+                                "context": "",
+                                "confidence": entity.get(
+                                    "score", entity.get("confidence", 0.0)
+                                ),
+                            }
+                        )
+                    else:
+                        entities.append(
+                            {
+                                "name": str(entity),
+                                "entity_type": entity_type,
+                                "context": "",
+                                "confidence": 0.9,
+                            }
+                        )
+
             return entities
 
     except httpx.HTTPStatusError as e:

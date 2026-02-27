@@ -27,7 +27,7 @@ async def analyze_video_frames(frames: list[str]) -> list[dict]:
                 response = await client.post(
                     "https://api.reka.ai/v1/chat",
                     headers={
-                        "Authorization": f"Bearer {settings.reka_api_key}",
+                        "X-Api-Key": settings.reka_api_key,
                         "Content-Type": "application/json",
                     },
                     json={
@@ -59,23 +59,29 @@ async def analyze_video_frames(frames: list[str]) -> list[dict]:
                 )
                 response.raise_for_status()
                 data = response.json()
-                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                content = (
+                    data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                )
 
-                results.append({
-                    "timestamp": i * 30.0,  # 30-second intervals
-                    "frame_path": frame_path,
-                    "description": content,
-                    "content_type": _classify_content(content),
-                })
+                results.append(
+                    {
+                        "timestamp": i * 30.0,  # 30-second intervals
+                        "frame_path": frame_path,
+                        "description": content,
+                        "content_type": _classify_content(content),
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Reka analysis failed for frame {i}: {e}")
-                results.append({
-                    "timestamp": i * 30.0,
-                    "frame_path": frame_path,
-                    "description": f"Analysis failed: {e}",
-                    "content_type": "unknown",
-                })
+                results.append(
+                    {
+                        "timestamp": i * 30.0,
+                        "frame_path": frame_path,
+                        "description": f"Analysis failed: {e}",
+                        "content_type": "unknown",
+                    }
+                )
 
     return results
 
@@ -91,7 +97,7 @@ async def analyze_video_url(video_url: str) -> list[dict]:
             response = await client.post(
                 "https://api.reka.ai/v1/chat",
                 headers={
-                    "Authorization": f"Bearer {settings.reka_api_key}",
+                    "X-Api-Key": settings.reka_api_key,
                     "Content-Type": "application/json",
                 },
                 json={
@@ -120,7 +126,13 @@ async def analyze_video_url(video_url: str) -> list[dict]:
             response.raise_for_status()
             data = response.json()
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return [{"timestamp": 0, "description": content, "content_type": "full_analysis"}]
+            return [
+                {
+                    "timestamp": 0,
+                    "description": content,
+                    "content_type": "full_analysis",
+                }
+            ]
 
     except Exception as e:
         logger.error(f"Reka video URL analysis failed: {e}")
