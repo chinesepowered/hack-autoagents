@@ -22,15 +22,12 @@ services:
       - key: YUTORI_API_KEY
         sync: false
       - key: FRONTEND_URL
-        fromService:
-          type: static
-          name: echomind-frontend
-          property: url
+        sync: false  # Set to your static site URL after first deploy
     healthCheckPath: /health
 
-staticSites:
   # Frontend Dashboard — React + Vite
-  - name: echomind-frontend
+  - type: static
+    name: echomind-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
@@ -48,9 +45,9 @@ staticSites:
         source: /*
         destination: /index.html
 
-cronJobs:
-  # Cron Job — Earnings call monitor
-  - name: echomind-monitor
+  # Cron Job — Earnings call monitor (every 6 hours)
+  - type: cron
+    name: echomind-monitor
     runtime: docker
     dockerfilePath: ./cron/Dockerfile
     dockerContext: ./cron
