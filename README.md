@@ -89,8 +89,9 @@ cp .env.example .env
 # Add your API keys to .env
 
 cd backend
+uv venv
 uv pip install -r requirements.txt
-python main.py
+uv run python main.py
 ```
 
 ### Frontend
