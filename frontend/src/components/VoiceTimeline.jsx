@@ -9,14 +9,6 @@ import {
   ReferenceLine,
 } from 'recharts'
 
-const TONE_COLORS = {
-  confident: '#4ade80',
-  enthusiastic: '#60a5fa',
-  neutral: '#9ca3af',
-  measured: '#fbbf24',
-  evasive: '#f87171',
-}
-
 export default function VoiceTimeline({ segments }) {
   if (!segments.length) return null
 

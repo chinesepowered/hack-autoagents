@@ -9,4 +9,3 @@ python-multipart==0.0.9
 httpx==0.27.0
 yt-dlp==2024.9.27
 python-dotenv==1.0.1
-reka-api>=0.1.0

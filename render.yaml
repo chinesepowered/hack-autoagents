@@ -23,17 +23,22 @@ services:
         sync: false
       - key: FRONTEND_URL
         fromService:
-          type: web
+          type: static
           name: echomind-frontend
-          property: host
+          property: url
     healthCheckPath: /health
 
+staticSites:
   # Frontend Dashboard — React + Vite
-  - type: web
-    name: echomind-frontend
-    runtime: static
+  - name: echomind-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: echomind-api
+          property: url
     headers:
       - path: /*
         name: X-Frame-Options
@@ -43,13 +48,13 @@ services:
         source: /*
         destination: /index.html
 
+cronJobs:
   # Cron Job — Earnings call monitor
-  - type: cron
-    name: echomind-monitor
+  - name: echomind-monitor
     runtime: docker
     dockerfilePath: ./cron/Dockerfile
     dockerContext: ./cron
-    schedule: "0 */6 * * *"  # Every 6 hours
+    schedule: "0 */6 * * *"
     envVars:
       - key: YUTORI_API_KEY
         sync: false
@@ -57,7 +62,7 @@ services:
         fromService:
           type: web
           name: echomind-api
-          property: host
+          property: url
 
 databases:
   - name: echomind-db

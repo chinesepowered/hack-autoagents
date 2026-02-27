@@ -14,6 +14,7 @@ export default function FactChecks({ checks }) {
   const verified = checks.filter((c) => c.verdict === 'verified').length
   const disputed = checks.filter((c) => c.verdict === 'disputed').length
   const context = checks.filter((c) => c.verdict === 'context_needed').length
+  const unverified = checks.filter((c) => c.verdict === 'unverified').length
 
   return (
     <div className="card">
@@ -35,6 +36,10 @@ export default function FactChecks({ checks }) {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500" />
           <span className="text-sm text-gray-300">{disputed} Disputed</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-gray-500" />
+          <span className="text-sm text-gray-300">{unverified} Unverified</span>
         </div>
       </div>
 
