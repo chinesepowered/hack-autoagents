@@ -5,6 +5,7 @@ services:
   # Backend API — FastAPI (Docker)
   - type: web
     name: echomind-api
+    plan: free
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend

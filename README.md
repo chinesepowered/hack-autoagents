@@ -89,15 +89,15 @@ cp .env.example .env
 # Add your API keys to .env
 
 cd backend
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 python main.py
 ```
 
 ### Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### 🚢 Deploy to Render
