@@ -1,5 +1,5 @@
 # EchoMind — Render Infrastructure as Code
-# Deploys 4 services: Web Service, Static Site, PostgreSQL, Cron Job
+# Deploys 3 services: Web Service, Static Site, PostgreSQL
 
 services:
   # Backend API — FastAPI (Docker)
@@ -29,7 +29,7 @@ services:
   - type: web
     name: echomind-frontend
     env: static
-    buildCommand: cd frontend && npm install && npm run build
+    buildCommand: cd frontend && pnpm install && pnpm build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
@@ -45,22 +45,6 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-
-  # Cron Job — Earnings call monitor (every 6 hours)
-  - type: cron
-    name: echomind-monitor
-    env: docker
-    dockerfilePath: ./cron/Dockerfile
-    dockerContext: ./cron
-    schedule: "0 */6 * * *"
-    envVars:
-      - key: YUTORI_API_KEY
-        sync: false
-      - key: ECHOMIND_API_URL
-        fromService:
-          type: web
-          name: echomind-api
-          property: host
 
 databases:
   - name: echomind-db

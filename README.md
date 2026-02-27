@@ -52,11 +52,11 @@ Financial analysts spend **3-5 hours per earnings call** manually:
 ┌──────────────────────────────────────────────────────────────┐
 │                     Render Platform                           │
 │                                                               │
-│  ┌──────────────┐  ┌───────────────┐  ┌───────────────────┐ │
-│  │ Static Site   │  │  Web Service  │  │    Cron Job       │ │
-│  │ React + Vite  │──│  FastAPI      │  │ Earnings Monitor  │ │
-│  │ Dashboard     │  │  Backend API  │  │ (Yutori Scouting) │ │
-│  └──────────────┘  └───────┬───────┘  └───────────────────┘ │
+│  ┌──────────────┐  ┌───────────────┐                        │
+│  │ Static Site   │  │  Web Service  │                        │
+│  │ React + Vite  │──│  FastAPI      │                        │
+│  │ Dashboard     │  │  Backend API  │                        │
+│  └──────────────┘  └───────┬───────┘                        │
 │                            │                                  │
 │                     ┌──────┴───────┐                         │
 │                     │  PostgreSQL   │                         │
@@ -77,7 +77,7 @@ Financial analysts spend **3-5 hours per earnings call** manually:
       └────────────┘
 ```
 
-**4 Render services:** Web Service + Static Site + PostgreSQL + Cron Job
+**3 Render services:** Web Service + Static Site + PostgreSQL
 
 ---
 
@@ -89,19 +89,19 @@ cp .env.example .env
 # Add your API keys to .env
 
 cd backend
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 python main.py
 ```
 
 ### Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### 🚢 Deploy to Render
-Connect this repo and Render auto-deploys all 4 services using `render.yaml` — infrastructure as code.
+Connect this repo and Render auto-deploys all 3 services using `render.yaml` — infrastructure as code.
 
 ---
 
@@ -110,7 +110,7 @@ Connect this repo and Render auto-deploys all 4 services using `render.yaml` —
 - **Backend:** Python 3.11, FastAPI, SQLAlchemy, PostgreSQL
 - **Frontend:** React 18, Vite, Tailwind CSS, Recharts
 - **AI Services:** Reka Vision, Modulate, Fastino/GLiNER2, Yutori
-- **Infrastructure:** Render (Web Service, Static Site, PostgreSQL, Cron Job)
+- **Infrastructure:** Render (Web Service, Static Site, PostgreSQL)
 - **Media Processing:** yt-dlp, ffmpeg
 
 ---
@@ -118,7 +118,7 @@ Connect this repo and Render auto-deploys all 4 services using `render.yaml` —
 ## 📂 Project Structure
 
 ```
-├── render.yaml              # Render infrastructure-as-code (4 services)
+├── render.yaml              # Render infrastructure-as-code (3 services)
 ├── backend/
 │   ├── main.py              # FastAPI application
 │   ├── services/
@@ -129,10 +129,8 @@ Connect this repo and Render auto-deploys all 4 services using `render.yaml` —
 │   │   └── yutori_service.py    # Fact-checking
 │   ├── models/              # SQLAlchemy + Pydantic schemas
 │   └── routers/             # API endpoints
-├── frontend/
-│   └── src/components/      # React dashboard components
-└── cron/
-    └── monitor.py           # Scheduled earnings call discovery
+└── frontend/
+    └── src/components/      # React dashboard components
 ```
 
 ---
@@ -149,7 +147,7 @@ Voice intelligence — analyzes speaker tone, prosody, and confidence. Goes beyo
 Fast, structured entity extraction with a 205M-parameter model. Extracts financial entities (companies, metrics, forward-looking statements, risk factors) and classifies statement types. Fine-tuned on financial data using Pioneer for improved F1 scores.
 
 ### Yutori 🔍
-Autonomous web research agents — verifies financial claims against SEC filings, news, and public data. Scouting API monitors for new earnings calls on a schedule.
+Autonomous web research agents — verifies financial claims against SEC filings, news, and public data.
 
 ### Render ☁️
-Modern PaaS powering the full stack — 4 service types deployed via infrastructure-as-code (`render.yaml`). Web service, static site, managed PostgreSQL, and cron job for automated monitoring.
+Modern PaaS powering the full stack — 3 service types deployed via infrastructure-as-code (`render.yaml`). Web service, static site, and managed PostgreSQL.
