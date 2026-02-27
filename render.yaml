@@ -2,10 +2,10 @@
 # Deploys 4 services: Web Service, Static Site, PostgreSQL, Cron Job
 
 services:
-  # Backend API — FastAPI
+  # Backend API — FastAPI (Docker)
   - type: web
     name: echomind-api
-    runtime: docker
+    env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
@@ -22,12 +22,13 @@ services:
       - key: YUTORI_API_KEY
         sync: false
       - key: FRONTEND_URL
-        sync: false  # Set to your static site URL after first deploy
+        sync: false
     healthCheckPath: /health
 
-  # Frontend Dashboard — React + Vite
-  - type: static
+  # Frontend Dashboard — React + Vite (Static Site)
+  - type: web
     name: echomind-frontend
+    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
@@ -48,7 +49,7 @@ services:
   # Cron Job — Earnings call monitor (every 6 hours)
   - type: cron
     name: echomind-monitor
-    runtime: docker
+    env: docker
     dockerfilePath: ./cron/Dockerfile
     dockerContext: ./cron
     schedule: "0 */6 * * *"
