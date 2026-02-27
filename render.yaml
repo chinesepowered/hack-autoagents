@@ -2,12 +2,12 @@
 # Deploys 3 services: Web Service, Static Site, PostgreSQL
 
 services:
-  # Backend API — FastAPI (Docker)
+  # Backend API — FastAPI (Native Python, free tier)
   - type: web
     name: echomind-api
-    env: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    runtime: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
