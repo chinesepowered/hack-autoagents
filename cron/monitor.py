@@ -13,7 +13,9 @@ import httpx
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ECHOMIND_API_URL = os.getenv("ECHOMIND_API_URL", "http://localhost:8000")
+_api_host = os.getenv("ECHOMIND_API_URL", "http://localhost:8000")
+# Render's fromService host property gives a bare hostname without protocol
+ECHOMIND_API_URL = _api_host if _api_host.startswith("http") else f"https://{_api_host}"
 YUTORI_API_KEY = os.getenv("YUTORI_API_KEY", "")
 
 # Companies to monitor

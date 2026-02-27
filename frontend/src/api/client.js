@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// VITE_API_URL may be a bare hostname (from Render's fromService host property)
+// or a full URL. Normalise to always have https:// in production.
+const _raw = import.meta.env.VITE_API_URL || ''
+const API_BASE = _raw && !_raw.startsWith('http') ? `https://${_raw}` : _raw
 
 export async function submitAnalysis(url) {
   const res = await fetch(`${API_BASE}/api/analyze`, {
