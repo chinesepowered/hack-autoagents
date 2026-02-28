@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import logging
 
@@ -7,11 +8,92 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+VISION_API_URL = "https://vision-agent.api.reka.ai"
+
+
+async def analyze_video_vision_api(video_path: str, question: str = "") -> list[dict]:
+    """Analyze video using Reka Vision API (upload + Q&A)."""
+    if not settings.reka_api_key:
+        logger.warning("REKA_API_KEY not set, using mock data")
+        return _mock_visual_analysis(3)
+
+    if not question:
+        question = "Analyze this earnings call. For each segment describe: 1) What is shown (slide, chart, speaker) 2) Key data visible 3) Speaker expressions. Return as JSON array with timestamp, content_type, description."
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            # Step 1: Upload video
+            with open(video_path, "rb") as f:
+                video_data = f.read()
+
+            files = {"file": ("video.mp4", video_data, "video/mp4")}
+            data = {"video_name": "earnings_call", "index": "false"}
+
+            upload_resp = await client.post(
+                f"{VISION_API_URL}/v1/videos/upload",
+                headers={"X-Api-Key": settings.reka_api_key},
+                files=files,
+                data=data,
+            )
+
+            if upload_resp.status_code != 200:
+                logger.error(f"Vision API upload failed: {upload_resp.text}")
+                return _mock_visual_analysis(3)
+
+            video_id = upload_resp.json().get("video_id")
+            logger.info(f"Uploaded video: {video_id}")
+
+            # Step 2: Poll for ready status
+            for _ in range(60):
+                await asyncio.sleep(2)
+                status_resp = await client.get(
+                    f"{VISION_API_URL}/v1/videos/{video_id}",
+                    headers={"X-Api-Key": settings.reka_api_key},
+                )
+                status = status_resp.json().get("status")
+                logger.info(f"Video status: {status}")
+                if status == "ready":
+                    break
+                if status == "error":
+                    logger.error("Video processing failed")
+                    return _mock_visual_analysis(3)
+
+            # Step 3: Ask question
+            qa_resp = await client.post(
+                f"{VISION_API_URL}/v1/qa/chat",
+                headers={
+                    "X-Api-Key": settings.reka_api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "video_id": video_id,
+                    "question": question,
+                },
+            )
+
+            if qa_resp.status_code != 200:
+                logger.error(f"Vision API Q&A failed: {qa_resp.text}")
+                return _mock_visual_analysis(3)
+
+            answer = qa_resp.json().get("answer", "")
+            return [
+                {
+                    "timestamp": 0,
+                    "description": answer,
+                    "content_type": "full_analysis",
+                }
+            ]
+
+    except Exception as e:
+        logger.error(f"Vision API analysis failed: {e}")
+        return _mock_visual_analysis(3)
+
 
 async def analyze_video_frames(frames: list[str]) -> list[dict]:
-    """Analyze video frames using Reka Vision API.
+    """Analyze video frames using Reka Chat API with images.
 
     Takes a list of frame file paths and returns visual insights for each.
+    Falls back to mock data on failure.
     """
     if not settings.reka_api_key:
         logger.warning("REKA_API_KEY not set, using mock data")
@@ -66,7 +148,7 @@ async def analyze_video_frames(frames: list[str]) -> list[dict]:
 
                 results.append(
                     {
-                        "timestamp": i * 30.0,  # 30-second intervals
+                        "timestamp": i * 30.0,
                         "frame_path": frame_path,
                         "description": content,
                         "content_type": _classify_content(content),
