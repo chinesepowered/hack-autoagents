@@ -37,8 +37,9 @@ async def analyze_video_frames(frames: list[str]) -> list[dict]:
                                 "role": "user",
                                 "content": [
                                     {
-                                        "type": "image",
-                                        "image": f"data:image/jpeg;base64,{image_data}",
+                                        "type": "image_url",
+                                        "image_url": "data:image/jpeg;base64,"
+                                        + image_data,
                                     },
                                     {
                                         "type": "text",
