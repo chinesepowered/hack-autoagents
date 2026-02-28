@@ -22,7 +22,7 @@ app.add_middleware(
         settings.frontend_url,
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://echomind-frontend.onrender.com",
+        "https://echomind-frontend-mwa1.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
