@@ -47,7 +47,9 @@ async def _async_pipeline(analysis_id: str, source_url: str):
         work_dir = media.get("work_dir")
 
         if media.get("error"):
-            logger.warning(f"Media download failed: {media['error']}. Proceeding with mock data.")
+            logger.warning(
+                f"Media download failed: {media['error']}. Proceeding with mock data."
+            )
 
         video_path = media.get("video_path")
         audio_path = media.get("audio_path")
@@ -62,25 +64,49 @@ async def _async_pipeline(analysis_id: str, source_url: str):
 
         # Step 4: Run all analysis services in parallel — each is independent.
         # return_exceptions=True ensures one failing service never kills the others.
-        visual_task = reka_service.analyze_video_frames(frames) if frames else reka_service.analyze_video_url(source_url)
+        if video_path:
+            visual_task = reka_service.analyze_video_vision_api(video_path)
+        else:
+            visual_task = (
+                reka_service.analyze_video_frames(frames)
+                if frames
+                else reka_service.analyze_video_url(source_url)
+            )
         voice_task = modulate_service.analyze_voice(audio_path, transcript)
         entity_task = fastino_service.extract_entities(transcript)
         classification_task = fastino_service.classify_statements(transcript)
 
         raw_results = await asyncio.gather(
-            visual_task, voice_task, entity_task, classification_task,
+            visual_task,
+            voice_task,
+            entity_task,
+            classification_task,
             return_exceptions=True,
         )
 
-        visual_results = _unwrap(raw_results[0], "Reka Vision", reka_service._mock_visual_analysis(5))
-        voice_results = _unwrap(raw_results[1], "Modulate", modulate_service._mock_voice_analysis())
-        entities = _unwrap(raw_results[2], "Fastino entities", fastino_service._mock_entity_extraction())
-        classifications = _unwrap(raw_results[3], "Fastino classify", fastino_service._mock_statement_classification())
+        visual_results = _unwrap(
+            raw_results[0], "Reka Vision", reka_service._mock_visual_analysis(5)
+        )
+        voice_results = _unwrap(
+            raw_results[1], "Modulate", modulate_service._mock_voice_analysis()
+        )
+        entities = _unwrap(
+            raw_results[2],
+            "Fastino entities",
+            fastino_service._mock_entity_extraction(),
+        )
+        classifications = _unwrap(
+            raw_results[3],
+            "Fastino classify",
+            fastino_service._mock_statement_classification(),
+        )
 
         # Step 5: Fact-check key claims using Yutori (also resilient)
         claims_to_check = [
-            c for c in classifications
-            if c.get("classification") in ("forward_looking_statement", "performance_metric", "risk_disclosure")
+            c
+            for c in classifications
+            if c.get("classification")
+            in ("forward_looking_statement", "performance_metric", "risk_disclosure")
         ]
         try:
             fact_check_results = await yutori_service.fact_check_claims(claims_to_check)
@@ -95,7 +121,9 @@ async def _async_pipeline(analysis_id: str, source_url: str):
         _store_fact_checks(db, analysis_id, fact_check_results)
 
         # Step 7: Generate summary
-        summary = _generate_summary(entities, voice_results, visual_results, fact_check_results)
+        summary = _generate_summary(
+            entities, voice_results, visual_results, fact_check_results
+        )
         analysis.summary = summary
         analysis.status = "completed"
         analysis.completed_at = datetime.utcnow()
@@ -121,50 +149,58 @@ async def _async_pipeline(analysis_id: str, source_url: str):
 
 def _store_visual_segments(db: Session, analysis_id: str, segments: list[dict]):
     for seg in segments:
-        db.add(VisualSegment(
-            analysis_id=analysis_id,
-            timestamp=seg.get("timestamp", 0),
-            description=seg.get("description", ""),
-            content_type=seg.get("content_type", "unknown"),
-        ))
+        db.add(
+            VisualSegment(
+                analysis_id=analysis_id,
+                timestamp=seg.get("timestamp", 0),
+                description=seg.get("description", ""),
+                content_type=seg.get("content_type", "unknown"),
+            )
+        )
     db.commit()
 
 
 def _store_voice_segments(db: Session, analysis_id: str, segments: list[dict]):
     for seg in segments:
-        db.add(VoiceSegment(
-            analysis_id=analysis_id,
-            start_time=seg.get("start_time", 0),
-            end_time=seg.get("end_time", 0),
-            speaker=seg.get("speaker", "Unknown"),
-            confidence_score=seg.get("confidence_score", 0),
-            tone=seg.get("tone", "neutral"),
-            transcript=seg.get("transcript", ""),
-        ))
+        db.add(
+            VoiceSegment(
+                analysis_id=analysis_id,
+                start_time=seg.get("start_time", 0),
+                end_time=seg.get("end_time", 0),
+                speaker=seg.get("speaker", "Unknown"),
+                confidence_score=seg.get("confidence_score", 0),
+                tone=seg.get("tone", "neutral"),
+                transcript=seg.get("transcript", ""),
+            )
+        )
     db.commit()
 
 
 def _store_entities(db: Session, analysis_id: str, entities: list[dict]):
     for ent in entities:
-        db.add(Entity(
-            analysis_id=analysis_id,
-            name=ent.get("name", ""),
-            entity_type=ent.get("entity_type", "unknown"),
-            context=ent.get("context", ""),
-            confidence=ent.get("confidence", 0),
-        ))
+        db.add(
+            Entity(
+                analysis_id=analysis_id,
+                name=ent.get("name", ""),
+                entity_type=ent.get("entity_type", "unknown"),
+                context=ent.get("context", ""),
+                confidence=ent.get("confidence", 0),
+            )
+        )
     db.commit()
 
 
 def _store_fact_checks(db: Session, analysis_id: str, fact_checks: list[dict]):
     for fc in fact_checks:
-        db.add(FactCheck(
-            analysis_id=analysis_id,
-            claim=fc.get("claim", ""),
-            verdict=fc.get("verdict", "unverified"),
-            evidence=fc.get("evidence", ""),
-            sources=fc.get("sources", "[]"),
-        ))
+        db.add(
+            FactCheck(
+                analysis_id=analysis_id,
+                claim=fc.get("claim", ""),
+                verdict=fc.get("verdict", "unverified"),
+                evidence=fc.get("evidence", ""),
+                sources=fc.get("sources", "[]"),
+            )
+        )
     db.commit()
 
 
@@ -172,12 +208,18 @@ def _generate_summary(entities, voice, visual, fact_checks) -> str:
     """Generate an executive summary from all analysis results."""
     people = [e for e in entities if e.get("entity_type") == "person"]
     companies = [e for e in entities if e.get("entity_type") == "company"]
-    metrics = [e for e in entities if e.get("entity_type") in ("currency_amount", "percentage", "financial_metric")]
+    metrics = [
+        e
+        for e in entities
+        if e.get("entity_type") in ("currency_amount", "percentage", "financial_metric")
+    ]
 
     verified = sum(1 for fc in fact_checks if fc.get("verdict") == "verified")
     disputed = sum(1 for fc in fact_checks if fc.get("verdict") == "disputed")
 
-    avg_confidence = sum(s.get("confidence_score", 0) for s in voice) / max(len(voice), 1)
+    avg_confidence = sum(s.get("confidence_score", 0) for s in voice) / max(
+        len(voice), 1
+    )
 
     low_confidence = [s for s in voice if s.get("confidence_score", 1) < 0.7]
 
@@ -196,20 +238,24 @@ def _generate_summary(entities, voice, visual, fact_checks) -> str:
             f"particularly during Q&A on margins and competitive positioning."
         )
 
-    summary_parts.extend([
-        f"\n### Fact Check Results",
-        f"- **{verified}** claims verified against public data",
-        f"- **{disputed}** claims disputed or needing context",
-        f"- **{len(fact_checks) - verified - disputed}** claims unverified",
-    ])
+    summary_parts.extend(
+        [
+            f"\n### Fact Check Results",
+            f"- **{verified}** claims verified against public data",
+            f"- **{disputed}** claims disputed or needing context",
+            f"- **{len(fact_checks) - verified - disputed}** claims unverified",
+        ]
+    )
 
     if visual:
         charts = sum(1 for v in visual if v.get("content_type") == "chart")
         slides = sum(1 for v in visual if v.get("content_type") == "slide")
-        summary_parts.extend([
-            f"\n### Visual Content",
-            f"Detected **{charts}** charts/graphs and **{slides}** presentation slides.",
-        ])
+        summary_parts.extend(
+            [
+                f"\n### Visual Content",
+                f"Detected **{charts}** charts/graphs and **{slides}** presentation slides.",
+            ]
+        )
 
     return "\n".join(summary_parts)
 
